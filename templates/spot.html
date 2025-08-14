@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Spotistats — Upload & See Insights</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+
+    <style>
+
+        :root { --spot:#1db954; --spot-600:#17a34a; --accent:#64ffda; --glass:rgba(255,255,255,.06); --muted:#b3b8c3; }
+        html,body{height:100%;background:
+          radial-gradient(1200px 700px at 10% -10%, rgba(29,185,84,.12), transparent 55%),
+          #0a0d12;}
+        .navbar{background:rgba(5,7,10,.55)!important;backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.06);}
+        .brand{background:linear-gradient(90deg,#1db954,#64ffda);-webkit-background-clip:text;background-clip:text;color:transparent;}
+        header.hero{min-height:calc(100vh - 64px);display:flex;align-items:center;justify-content:center;padding:3rem 0;position:relative;overflow:hidden;}
+        .dropzone{border:2px dashed rgba(255,255,255,.2);border-radius:16px;background:rgba(255,255,255,.03);transition:border-color .25s ease, background .25s ease, transform .12s ease;max-width:560px;}
+        .dropzone.dragover{border-color:var(--accent);background:rgba(100,255,218,.07);transform:scale(1.01);}
+        .btn-spot{--bs-btn-color:#111;--bs-btn-bg:var(--spot);--bs-btn-border-color:var(--spot);--bs-btn-hover-bg:var(--spot-600);--bs-btn-hover-border-color:var(--spot-600);--bs-btn-focus-shadow-rgb:29,185,84;}
+        .reveal{opacity:0;transform:translateY(16px);transition:opacity .5s ease, transform .5s ease;}
+        .reveal.show{opacity:1;transform:translateY(0);}
+        .glass{background:var(--glass);border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 26px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);}
+        .feature-card{transition:transform .25s ease;} .feature-card:hover{transform:translateY(-4px);}
+        .divider-x{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.1),transparent);}
+        .small-muted{color:var(--muted);} .kpi{font-variant-numeric:tabular-nums;}
+        .barlist{list-style:none;margin:0;padding:0;}
+        .barlist li{position:relative;overflow:hidden;border-radius:10px;background:rgba(255,255,255,.05);margin-bottom:.6rem;padding:.6rem .8rem;}
+        .barlist li .barfill{position:absolute;inset:0;width:var(--pct,0%);background:linear-gradient(90deg,rgba(29,185,84,.35),rgba(100,255,218,.25));z-index:0;}
+        .barlist li .cell{position:relative;z-index:1;}
+        .rowline{display:flex;justify-content:space-between;gap:1rem;}
+        .barlist .name{color:#fff;font-weight:600;}
+        .barlist .count{color:#d5dbe3;font-variant-numeric:tabular-nums;}
+        .tripleline{margin:0;display:flex;flex-direction:column;flex:1;}
+        .tripleline .song{font-weight:700;color:#fff;}
+        .tripleline .album{color:#d0d6df;}
+        .tripleline .artists{color:var(--muted);font-style:italic;}
+        .middot::before{content:" · ";}
+        .track-album-row{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;}
+        .track-album-row .count{color:#d5dbe3;font-variant-numeric:tabular-nums;flex-shrink:0;align-self:flex-start;}
+        .chart-card canvas{width:100% !important;height:280px !important;}
+          html, body {
+    background: #0a0d12;
+    position: relative;
+  }
+  body::before {
+    content: "";
+    position: fixed;       /* sayfa boyunca sabit */
+    inset: 0;
+    z-index: -1;           /* tüm içerikten arkada */
+    pointer-events: none;  /* tıklamaları etkilemesin */
+    background:
+      radial-gradient(1200px 700px at 10% -10%, rgba(29,185,84,.12), transparent 55%),
+      #0a0d12;             /* istersen renkleri burada değiştir */
+  }
+
+
+  .card.glass.chart-card {
+    background: rgba(10,13,18,0.96) !important;
+  }
+  .card.glass.feature-card {
+    background: rgba(10,13,18,0.92) !important;
+  }
+        #resultsCta {
+    order: 99;
+  }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg sticky-top">
+    <div class="container">
+        <a class="navbar-brand fw-semibold fs-3 " href="#home"> <img src="/static/logo.png" alt="Logo" class="me-2"
+                                                                     style="height: 72px;"><span
+                class="brand">Spotlight</span></a>
+        <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#nav"><span
+                class="navbar-toggler-icon"></span></button>
+        <div class="collapse navbar-collapse" id="nav">
+
+        </div>
+    </div>
+</nav>
+
+<header id="home" class="hero">
+    <div class="container">
+        <div class="mx-auto" style="max-width: 720px">
+            <h1 class="display-5 fw-bold mb-3 brand text-center">Your Spotify Wrapped — On Demand</h1>
+            <p class="lead small-muted mb-4 text-center">
+                Spotlight analyzes your exported listening history and visualizes the patterns that define your taste.
+                Private, fast, and elegant.
+            </p>
+
+
+            <div id="dropzone" class="dropzone text-center p-4 p-lg-5 mx-auto reveal show">
+                <!-- NOT: hidden yerine visually-hidden -->
+                <input id="fileInput" type="file" accept=".zip,application/zip" class="visually-hidden"/>
+                <div class="mb-2"><i class="bi bi-cloud-arrow-up fs-1 text-success"></i></div>
+                <h5 class="mb-1 text-">Drag and drop your <span class="text-white">.zip</span> here</h5>
+                <div class="small-muted">or <a href="#" id="browseLink">browse</a> your files</div>
+                <div id="fileMeta" class="mt-3 small-muted d-none"></div>
+            </div>
+
+            <div class="mt-3 d-flex gap-2 justify-content-center">
+                <button id="btnAnalyze" class="btn btn-spot btn-lg" disabled><i class="bi bi-rocket-takeoff me-2"></i>Analyze
+                </button>
+                <button id="btnClear" class="btn btn-outline-light btn-lg" disabled><i class="bi bi-trash3 me-2"></i>Clear
+                </button>
+            </div>
+
+            <div id="progressWrap" class="progress mt-3 d-none" role="progressbar" aria-label="Upload progress"
+                 aria-valuemin="0" aria-valuemax="100">
+                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">
+                    0%
+                </div>
+            </div>
+            <div class="card mb-4 mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">How to get your Spotify Data</h5>
+                    <p class="card-text">
+                    <ol>
+                        <li>Visit: <a href="https://www.spotify.com/account/privacy" target="_blank">Spotify Privacy
+                            Settings</a></li>
+                        <li>Log in to your account</li>
+                        <li>Scroll to <strong>"Download your data"</strong> → click <strong>"Request data"</strong>
+                            (Extended Streaming History)
+                        </li>
+                        <li>Confirm request via the email from Spotify</li>
+                        <li>Wait (up to 30 days) → Download the ZIP file from the email link</li>
+                    </ol>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</header>
+
+<div class="divider-x"></div>
+
+<section id="results" class="py-5">
+    <div class="container">
+        <div id="resultsIntro" class="row justify-content-center mb-4 d-none">
+            <div class="col-lg-8 text-center">
+                <h2 class="fw-bold mb-2">Your Insights</h2>
+                <p class="small-muted">Generated from your uploaded Spotify export.</p>
+            </div>
+        </div>
+
+        <div id="resultsGrid" class="row g-4 d-none">
+            <div class="col-12 order-md-1 reveal" style="transition-delay:.1s">
+                <div class="card glass feature-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2"><i
+                                class="bi bi-person-badge fs-4 me-2 text-success"></i><h6 class="m-0">Top Artists</h6>
+                        </div>
+                        <ul id="topArtists" class="barlist"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 reveal" style="transition-delay:.05s">
+                <div class="card glass feature-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2"><i class="bi bi-vinyl fs-4 me-2 text-success"></i>
+                            <h6 class="m-0">Top Tracks</h6></div>
+                        <ul id="topTracks" class="barlist"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 reveal" style="transition-delay:.1s">
+                <div class="card glass feature-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2"><i class="bi bi-disc fs-4 me-2 text-success"></i><h6
+                                class="m-0">Top Albums</h6></div>
+                        <ul id="topAlbums" class="barlist"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 order-md-3 reveal" style="transition-delay:.15s">
+                <div class="card glass chart-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2"><i
+                                class="bi bi-calendar-week fs-5 me-2 text-success"></i><h6 class="m-0">Listening Count
+                            by Days</h6></div>
+                        <canvas id="chartDays"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 order-md-2 reveal" style="transition-delay:.2s">
+                <div class="card glass chart-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2"><i
+                                class="bi bi-clock-history fs-5 me-2 text-success"></i><h6 class="m-0">Listening Count
+                            by Hours of Day</h6></div>
+                        <canvas id="chartHours"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 order-md-4 reveal" style="transition-delay:.25s">
+                <div class="card glass chart-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2"><i
+                                class="bi bi-calendar3 fs-5 me-2 text-success"></i><h6 class="m-0">Listening Count by
+                            Months</h6></div>
+                        <canvas id="chartMonths"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="resultsCta" class="row justify-content-center mt-4 d-none">
+                <div class="col-auto">
+                    <a class="btn btn-outline-light" href="#home" id="uploadAnotherBtn"><i
+                            class="bi bi-arrow-up-right-circle me-1"></i>Upload another</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1080">
+    <div id="toast" class="toast align-items-center text-bg-dark border-0" role="alert" aria-live="assertive"
+         aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+    // ELEMENTS
+    const dropzone     = document.getElementById("dropzone");
+    const fileInput    = document.getElementById("fileInput");
+    const browseLink   = document.getElementById("browseLink");
+    const fileMeta     = document.getElementById("fileMeta");
+    const btnAnalyze   = document.getElementById("btnAnalyze");
+    const btnClear     = document.getElementById("btnClear");
+    const progressWrap = document.getElementById("progressWrap");
+    const progressBar  = document.getElementById("progressBar");
+
+    const resultsIntro = document.getElementById("resultsIntro");
+    const resultsGrid  = document.getElementById("resultsGrid");
+    const resultsCta   = document.getElementById("resultsCta");
+
+    const topArtistsEl = document.getElementById("topArtists");
+    const topTracksEl  = document.getElementById("topTracks");
+    const topAlbumsEl  = document.getElementById("topAlbums");
+
+    // CHART INSTANCES (single declaration)
+    let chartDays, chartHours, chartMonths;
+
+    // TOAST + HELPERS
+    function showToast(msg, type = "info") {
+      const toastEl = document.getElementById("toast");
+      toastEl.querySelector(".toast-body").innerHTML = msg;
+      toastEl.classList.remove("text-bg-dark","text-bg-success","text-bg-danger","text-bg-warning");
+      toastEl.classList.add("text-bg-" + (type === "info" ? "dark" : type));
+      new bootstrap.Toast(toastEl, { delay: 2200 }).show();
+    }
+    function formatBytes(bytes) {
+      if (bytes === 0) return "0 B";
+      const k = 1024, sizes = ["B","KB","MB","GB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return (bytes / Math.pow(k, i)).toFixed(2) + " " + sizes[i];
+    }
+    const reveal = (el) => el.classList.add("show");
+
+    // BACKEND -> UI NORMALIZER
+    function normalizeFromBackend(d){
+      const makeItems = (labels = [], values = [], mapper) =>
+        labels.map((label, i) => mapper(label, Number(values[i] ?? 0)));
+
+      return {
+        topArtists: makeItems(d?.top_artists?.labels, d?.top_artists?.values,
+          (label, v) => ({ name: String(label), count: v })),
+        topTracks: makeItems(d?.top_songs?.labels, d?.top_songs?.values,
+          (label, v) => ({ song: String(label), album: "", artists: [], count: v })),
+        topAlbums: makeItems(d?.top_albums?.labels, d?.top_albums?.values,
+          (label, v) => ({ album: String(label), artists: [], count: v })),
+        byDays:   { labels: (d?.daily?.labels||[]).map(String),   values: (d?.daily?.values||[]).map(Number) },
+        byHours:  { labels: (d?.hourly?.labels||[]).map(h => /^\d{1,2}$/.test(String(h)) ? String(h).padStart(2,"0")+":00" : String(h)),
+                    values: (d?.hourly?.values||[]).map(Number) },
+        byMonths: { labels: (d?.monthly?.labels||[]).map(String), values: (d?.monthly?.values||[]).map(Number) },
+      };
+    }
+
+    // RENDER HELPERS
+    function joinArtists(arr){ return (arr||[]).map((a,i)=> i?`<span class="middot"></span>${a}`:a).join(""); }
+
+    function renderTopArtistsBarList(items) {
+      if (!items?.length) { topArtistsEl.innerHTML = "<li class='small-muted'>No data</li>"; return; }
+      const max = Math.max(...items.map(i => i.count || 0));
+      topArtistsEl.innerHTML = items.map(i => {
+        const pct = max ? Math.round((i.count / max) * 100) : 0;
+        return `<li style="--pct:${pct}%"><div class="barfill"></div><div class="cell"><div class="rowline"><span class="name">${i.name ?? "-"}</span><span class="count">${i.count ?? 0}</span></div></div></li>`;
+      }).join("");
+    }
+
+    function renderTopTracksBarList(container, items) {
+      if (!items?.length) { container.innerHTML = "<li class='small-muted'>No data</li>"; return; }
+      const max = Math.max(...items.map(i => i.count || 0));
+      container.innerHTML = items.map(i => {
+        const pct = max ? Math.round((i.count / max) * 100) : 0;
+        return `<li style="--pct:${pct}%"><div class="barfill"></div><div class="cell"><div class="track-album-row"><div class="tripleline"><div class="song">${i.song ?? "-"}</div><div class="album">${i.album ?? "-"}</div><div class="artists"><em>${joinArtists(i.artists||[])}</em></div></div><span class="count">${i.count ?? 0}</span></div></div></li>`;
+      }).join("");
+    }
+
+    function renderTopAlbumsBarList(container, items) {
+      if (!items?.length) { container.innerHTML = "<li class='small-muted'>No data</li>"; return; }
+      const max = Math.max(...items.map(i => i.count || 0));
+      container.innerHTML = items.map(i => {
+        const pct = max ? Math.round((i.count / max) * 100) : 0;
+        return `<li style="--pct:${pct}%"><div class="barfill"></div><div class="cell"><div class="track-album-row"><div class="tripleline"><div class="album" style="font-weight:700;color:#fff">${i.album ?? "-"}</div><div class="artists"><em>${joinArtists(i.artists||[])}</em></div></div><span class="count">${i.count ?? 0}</span></div></div></li>`;
+      }).join("");
+    }
+
+    function renderChartsFrom(byDays, byHours, byMonths){
+      const daysCtx   = document.getElementById("chartDays");
+      const hoursCtx  = document.getElementById("chartHours");
+      const monthsCtx = document.getElementById("chartMonths");
+
+      const baseOpts = {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: true } },
+        scales: {
+          x: { grid: { color: "rgba(255,255,255,.07)" }, ticks: { color: "#cfd6de" } },
+          y: { grid: { color: "rgba(255,255,255,.07)" }, ticks: { color: "#cfd6de" }, beginAtZero: true }
+        }
+      };
+
+      chartDays = new Chart(daysCtx, {
+        type: "bar",
+        data: { labels: byDays.labels, datasets: [{ data: byDays.values, backgroundColor: "rgba(29,185,84,0.5)" }] },
+        options: baseOpts
+      });
+
+      chartHours = new Chart(hoursCtx, {
+        type: "radar",
+        data: {
+          labels: byHours.labels,
+          datasets: [{
+            label: "Listening Count",
+            data: byHours.values,
+            backgroundColor: "rgba(29,185,84,0.2)",
+            borderColor: "rgba(29,185,84,0.9)",
+            pointBackgroundColor: "rgba(29,185,84,0.9)",
+            pointBorderColor: "#fff",
+            pointHoverBackgroundColor: "#fff",
+            pointHoverBorderColor: "rgba(29,185,84,0.9)"
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { r: {
+            grid: { color: "rgba(255,255,255,.15)" },
+            angleLines: { color: "rgba(255,255,255,.1)" },
+            pointLabels: { color: "#e8ecf0", font: { size: 11, weight: "500" } },
+            ticks: { color: "#e8ecf0", beginAtZero: true, backdropColor: "rgba(10,13,18,0.8)", font: { size: 10 } }
+          } }
+        }
+      });
+
+      chartMonths = new Chart(monthsCtx, {
+        type: "line",
+        data: { labels: byMonths.labels, datasets: [{ data: byMonths.values, fill: false, borderColor: "rgba(29,185,84,0.9)", backgroundColor: "rgba(29,185,84,0.9)", tension: .35, pointRadius: 3 }] },
+        options: baseOpts
+      });
+    }
+
+    function populateInsightsFrom(norm){
+      renderTopArtistsBarList(norm.topArtists);
+      renderTopTracksBarList(topTracksEl, norm.topTracks);
+      renderTopAlbumsBarList(topAlbumsEl, norm.topAlbums);
+      if (chartDays)   { chartDays.destroy();   chartDays = null; }
+      if (chartHours)  { chartHours.destroy();  chartHours = null; }
+      if (chartMonths) { chartMonths.destroy(); chartMonths = null; }
+      renderChartsFrom(norm.byDays, norm.byHours, norm.byMonths);
+    }
+
+    function setSelectedFile(file) {
+      if (!file) return;
+      const isZip = file.type === "application/zip" || file.name?.toLowerCase().endsWith(".zip");
+      if (!isZip) { showToast('<i class="bi bi-exclamation-triangle me-2"></i>Please select a .zip file.', "warning"); return; }
+      fileMeta.classList.remove("d-none");
+      fileMeta.innerHTML = `<i class="bi bi-file-zip me-2 text-success"></i><span class="text-white">${file.name}</span> • ${formatBytes(file.size)}`;
+      btnAnalyze.disabled = false;
+      btnClear.disabled = false;
+    }
+
+    function clearSelection() {
+      fileInput.value = "";
+      fileMeta.classList.add("d-none");
+      fileMeta.innerHTML = "";
+      btnAnalyze.disabled = true;
+      btnClear.disabled = true;
+      progressWrap.classList.add("d-none");
+      progressBar.style.width = "0%";
+      progressBar.textContent = "0%";
+    }
+
+    function clearEverything() {
+      clearSelection();
+      resultsIntro.classList.add("d-none");
+      resultsGrid.classList.add("d-none");
+      resultsCta.classList.add("d-none");
+      topArtistsEl.innerHTML = "";
+      topTracksEl.innerHTML  = "";
+      topAlbumsEl.innerHTML  = "";
+      if (chartDays)   { chartDays.destroy();   chartDays = null; }
+      if (chartHours)  { chartHours.destroy();  chartHours = null; }
+      if (chartMonths) { chartMonths.destroy(); chartMonths = null; }
+      resultsGrid.querySelectorAll(".reveal").forEach((el) => el.classList.remove("show"));
+      document.getElementById("home").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function showResults() {
+      resultsIntro.classList.remove("d-none");
+      resultsGrid.classList.remove("d-none");
+      resultsCta.classList.remove("d-none");
+      requestAnimationFrame(() => {
+        resultsGrid.querySelectorAll(".reveal").forEach((el, i) => setTimeout(() => el.classList.add("show"), 60 * i));
+      });
+      document.getElementById("results").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // WIRE UI
+    browseLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (fileInput.showPicker) fileInput.showPicker(); else fileInput.click();
+    });
+    dropzone.addEventListener("click", () => {
+      if (fileInput.showPicker) fileInput.showPicker(); else fileInput.click();
+    });
+    // 🔑 change event GERİ EKLENDİ
+    fileInput.addEventListener("change", (e) => {
+      const f = e.target.files?.[0];
+      if (!f) { showToast("No file selected.", "warning"); return; }
+      setSelectedFile(f);
+      console.log("Selected:", f.name, f.type, f.size);
+    });
+
+    ["dragenter","dragover"].forEach((evt) =>
+      dropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add("dragover"); })
+    );
+    ["dragleave","drop"].forEach((evt) =>
+      dropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove("dragover"); })
+    );
+    dropzone.addEventListener("drop", (e) => {
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      setSelectedFile(file);
+    });
+
+    btnClear.addEventListener("click", clearSelection);
+    document.getElementById("uploadAnotherBtn").addEventListener("click", (e) => { e.preventDefault(); clearEverything(); });
+
+    // UPLOAD & FETCH
+    btnAnalyze.addEventListener("click", async () => {
+      const file = fileInput.files[0];
+      if (!file) { showToast("Please choose a .zip file.", "warning"); return; }
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      progressWrap.classList.remove("d-none");
+      progressBar.style.width = "0%";
+      progressBar.textContent = "0%";
+
+      try {
+        const resp = await fetch("/ds", {
+          method: "POST",
+          body: formData,
+          headers: { "Accept": "application/json" },
+          credentials: "same-origin"
+        });
+
+        const raw = await resp.text();
+        const isJson = (resp.headers.get("content-type") || "").includes("application/json");
+
+        if (!resp.ok) {
+          console.error("Server error:", resp.status, resp.statusText, raw.slice(0,200));
+          showToast("Please upload the zip file with the correct content", "danger");
+          progressWrap.classList.add("d-none");
+          return;
+        }
+        if (!isJson) {
+          console.error("Non-JSON response:", raw.slice(0,200));
+          showToast("Server returned non-JSON (check /ds).", "danger");
+          progressWrap.classList.add("d-none");
+          return;
+        }
+
+        let backendData;
+        try { backendData = JSON.parse(raw); }
+        catch(e){ console.error("JSON parse error:", e, raw.slice(0,200)); showToast("Invalid JSON from server.", "danger"); progressWrap.classList.add("d-none"); return; }
+
+        // simple progress animation
+        let pct = 10;
+        const tick = setInterval(() => {
+          pct = Math.min(95, pct + Math.random() * 15);
+          progressBar.style.width = pct.toFixed(0) + "%";
+          progressBar.textContent = pct.toFixed(0) + "%";
+        }, 180);
+
+        const norm = normalizeFromBackend(backendData);
+
+        clearInterval(tick);
+        progressBar.style.width = "100%";
+        progressBar.textContent = "100%";
+
+        populateInsightsFrom(norm);
+        showResults();
+        showToast('<i class="bi bi-check2-circle me-2"></i>Upload complete.', "success");
+
+      } catch (err) {
+        console.error(err);
+        showToast("Network error.", "danger");
+        progressWrap.classList.add("d-none");
+      }
+    });
+
+    // navbar shadow
+    const nav = document.querySelector(".navbar");
+    const toggleShadow = () => { if (scrollY > 8) nav.classList.add("shadow-sm"); else nav.classList.remove("shadow-sm"); };
+    document.addEventListener("scroll", toggleShadow); toggleShadow();
+</script>
+</body>
+</html>
